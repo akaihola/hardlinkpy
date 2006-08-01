@@ -5,12 +5,11 @@ import getopt, os, re, stat, sys, time
 # hardlink - Goes through a directory structure and creates hardlinks for
 # files which are identical
 #
-# Copyright (C) 2003, 2004, 2005  John L. Villalovos
+# Copyright (C) 2003 - 2006  John L. Villalovos
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later
-# version.
+# Foundation; version 2 of the License.
 #
 # This program is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -401,14 +400,13 @@ class cOptions:
         return args
     def printversion(self):
         print "hardlink.py, Version %s" % VERSION
-        print "Copyright (C) 2005 John L. Villalovos."
+        print "Copyright (C) 2003 - 2006 John L. Villalovos."
         print "email: software@sodarock.com"
         print "web: http://www.sodarock.com/"
         print """
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
+Foundation; version 2 of the License.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A

@@ -5,7 +5,7 @@ import getopt, os, re, stat, sys, time
 # hardlink - Goes through a directory structure and creates hardlinks for
 # files which are identical
 #
-# Copyright (C) 2003 - 2006  John L. Villalovos
+# Copyright (C) 2003 - 2006  John L. Villalovos, Hillsboro, Oregon
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -33,6 +33,12 @@ import getopt, os, re, stat, sys, time
 # Original hardlink.c code was written by:  Jakub Jelinek <jakub@redhat.com>
 #
 # ------------------------------------------------------------------------
+#
+# 2006-08-02  Currently this code tries to be compatible with Python 1.5
+# because one of the systems I use it on has not been upgraded :(  I will be
+# upgrading that system soon and then won't care about Python 1.5 compatibility
+# anymore.
+#
 
 
 # Hash functions
@@ -356,6 +362,9 @@ class cOptions:
         self.printprevious = None
 
     def parsearguments(self,arg_list):
+        # TODO: Probably should change this to use optparse but I want it to be
+        # compatible with Python 1.5 at the moment, but soon I want care about
+        # that
         short_options = 'fnpqtv:x:'
         long_options = [ 'timestamp-ignore', 'filenames-equal',
             'dry-run', 'no-stats', 'print-previous', 'verbose=',
@@ -382,7 +391,6 @@ class cOptions:
                 self.printversion()
                 sys.exit(0)
             elif opt == "-x" or opt == "--exclude":
-                # self.exclude.append(os.path.abspath(os.path.expanduser(value)))
                 self.exclude.append(value)
             elif opt == "-p" or opt == "--print-previous":
                 self.printprevious = 1

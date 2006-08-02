@@ -363,7 +363,7 @@ class cOptions:
 
     def parsearguments(self,arg_list):
         # TODO: Probably should change this to use optparse but I want it to be
-        # compatible with Python 1.5 at the moment, but soon I want care about
+        # compatible with Python 1.5 at the moment, but soon I wont care about
         # that
         short_options = 'fnpqtv:x:'
         long_options = [ 'timestamp-ignore', 'filenames-equal',

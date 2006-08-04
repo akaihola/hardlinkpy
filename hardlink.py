@@ -99,10 +99,11 @@ def eligibleForHardlink(
         print "Device:", st1[stat.ST_DEV], st2[stat.ST_DEV]
     return result
 
-# Determine if the contents of two files are equal.
-#
-# **!! This function assumes that the file sizes of the two files are equal.
+
 def areFileContentsEqual(filename1, filename2):
+    """Determine if the contents of two files are equal.
+    **!! This function assumes that the file sizes of the two files are
+    equal."""
     # Open our two files
     file1 = open(filename1,'rb')
     file2 = open(filename2,'rb')

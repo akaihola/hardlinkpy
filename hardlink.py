@@ -229,6 +229,8 @@ def hardlink_identical_files(directories, filename):
         stat_info = os.stat(filename)
     except OSError:
         # Python 1.5.2 doesn't handle 2GB+ files well :(
+	print "Unable to get stat info for: %s" % filename
+	print "If running Python 1.5 this could be because the file is greater than 2 Gibibytes"
         return
     if not stat_info:
         # We didn't get the file status info :(

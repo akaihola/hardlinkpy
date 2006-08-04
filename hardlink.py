@@ -236,39 +236,43 @@ def hardlink_identical_files(directories, filename):
 
     # Is it a directory?
     if stat.S_ISDIR(stat_info[stat.ST_MODE]):
-        # If it is a directory then add it to the vector
+	# If it is a directory then add it to the list of directories.
         directories.append(filename)
     # Is it a regular file?
     elif stat.S_ISREG(stat_info[stat.ST_MODE]):
-        # Create the hash for the file
+        # Create the hash for the file.
         file_hash = hash_value( stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME] )
-        # Bump count of regular files found
+        # Bump statistics count of regular files found.
         gStats.foundRegularFile()
         if gOptions.getVerboselevel() >= 2:
             print "File: %s" % filename
         work_file_info = (filename, stat_info)
         if file_hashes.has_key(file_hash):
-            # We have file(s) that have the same hash
-            # Let's go through the list of files with the same hash and see if
-            # we are already hardlinked to any of them
+	    # We have file(s) that have the same hash as our current file.
+	    # Let's go through the list of files with the same hash and see if
+	    # we are already hardlinked to any of them.
             for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
                 if isAlreadyHardlinked(stat_info,temp_stat_info):
                     gStats.foundHardlink(temp_filename,filename,
                         temp_stat_info)
                     break
             else:
-                # We did not find this file as hardlinked to any other file yet
+		# We did not find this file as hardlinked to any other file
+		# yet.  So now lets see if our file should be hardlinked to any
+		# of the other files with the same hash.
                 for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
-                    # TODO:  We need to do a comparison to see if we should hardlink
                     if areFilesHardlinkable(work_file_info, (temp_filename, temp_stat_info)):
                         hardlinkfiles(temp_filename, filename, temp_stat_info)
                         break
                 else:
-                    # Add it to the list of files
+		    # The file should NOT be hardlinked to any of the other
+		    # files with the same hash.  So we will add it to the list
+		    # of files.
                     file_hashes[file_hash].append(work_file_info)
         else:
-            file_hashes[file_hash] = []
-            file_hashes[file_hash].append(work_file_info)
+	    # There weren't any other files with the same hash value so we will
+	    # create a new entry and store our file.
+            file_hashes[file_hash] = [work_file_info]
 
 
 class cStatistics:
@@ -482,8 +486,8 @@ def main():
     MIRROR_PL_REGEX = re.compile(r'^\.in\.')
     RSYNC_TEMP_REGEX = re.compile((r'^\..*\.\?{6,6}$'))
     # Now go through all the directories that have been added.
-    # NOTE: hardlink_identical_files() will add more directories to the global
-    #       dirs vector as it finds them.
+    # NOTE: hardlink_identical_files() will add more directories to the
+    #       directories list as it finds them.
     while directories:
         # Get the last directory in the list
         directory = directories[-1] + '/'

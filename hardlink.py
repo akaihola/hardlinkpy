@@ -230,8 +230,8 @@ def hardlink_identical_files(directories, filename):
         stat_info = os.stat(filename)
     except OSError:
         # Python 1.5.2 doesn't handle 2GB+ files well :(
-	print "Unable to get stat info for: %s" % filename
-	print "If running Python 1.5 this could be because the file is greater than 2 Gibibytes"
+        print "Unable to get stat info for: %s" % filename
+        print "If running Python 1.5 this could be because the file is greater than 2 Gibibytes"
         return
     if not stat_info:
         # We didn't get the file status info :(
@@ -239,7 +239,7 @@ def hardlink_identical_files(directories, filename):
 
     # Is it a directory?
     if stat.S_ISDIR(stat_info[stat.ST_MODE]):
-	# If it is a directory then add it to the list of directories.
+        # If it is a directory then add it to the list of directories.
         directories.append(filename)
     # Is it a regular file?
     elif stat.S_ISREG(stat_info[stat.ST_MODE]):
@@ -251,30 +251,30 @@ def hardlink_identical_files(directories, filename):
             print "File: %s" % filename
         work_file_info = (filename, stat_info)
         if file_hashes.has_key(file_hash):
-	    # We have file(s) that have the same hash as our current file.
-	    # Let's go through the list of files with the same hash and see if
-	    # we are already hardlinked to any of them.
+            # We have file(s) that have the same hash as our current file.
+            # Let's go through the list of files with the same hash and see if
+            # we are already hardlinked to any of them.
             for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
                 if isAlreadyHardlinked(stat_info,temp_stat_info):
                     gStats.foundHardlink(temp_filename,filename,
                         temp_stat_info)
                     break
             else:
-		# We did not find this file as hardlinked to any other file
-		# yet.  So now lets see if our file should be hardlinked to any
-		# of the other files with the same hash.
+                # We did not find this file as hardlinked to any other file
+                # yet.  So now lets see if our file should be hardlinked to any
+                # of the other files with the same hash.
                 for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
                     if areFilesHardlinkable(work_file_info, (temp_filename, temp_stat_info)):
                         hardlinkfiles(temp_filename, filename, temp_stat_info)
                         break
                 else:
-		    # The file should NOT be hardlinked to any of the other
-		    # files with the same hash.  So we will add it to the list
-		    # of files.
+                    # The file should NOT be hardlinked to any of the other
+                    # files with the same hash.  So we will add it to the list
+                    # of files.
                     file_hashes[file_hash].append(work_file_info)
         else:
-	    # There weren't any other files with the same hash value so we will
-	    # create a new entry and store our file.
+            # There weren't any other files with the same hash value so we will
+            # create a new entry and store our file.
             file_hashes[file_hash] = [work_file_info]
 
 

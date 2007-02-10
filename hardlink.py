@@ -82,8 +82,8 @@ def eligibleForHardlink(
             (st1[stat.ST_MODE] == st2[stat.ST_MODE]) and    # file mode is the same
             (st1[stat.ST_UID] == st2[stat.ST_UID]) and      # owner user id is the same
             (st1[stat.ST_GID] == st2[stat.ST_GID]) and      # owner group id is the same
-            ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or          # modified time is the same 
-              (gOptions.isIgnoretimestamp())) and                   # OR date hashing is off 
+            ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or          # modified time is the same
+              (gOptions.isIgnoretimestamp())) and                   # OR date hashing is off
             (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
         )
     if None:

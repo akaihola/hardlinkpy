@@ -3,7 +3,7 @@
 import getopt, os, re, stat, sys, time
 
 # hardlink - Goes through a directory structure and creates hardlinks for
-# files which are identical
+# files which are identical.
 #
 # Copyright (C) 2003 - 2007  John L. Villalovos, Hillsboro, Oregon
 #

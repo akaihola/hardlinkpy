@@ -27,19 +27,18 @@ import getopt, os, re, stat, sys, time
 # email: john@sodarock.com
 # http://www.sodarock.com/
 #
-# Idea for this program came from hardlink.c code. I liked what it did but
-# did not like the code itself.  To me it was very unmaintainable.  So I
-# converted hardlink.c to hardlink.cpp and then I converted it to Python!
+# Inspiration for this program came from the hardlink.c code. I liked what it
+# did but did not like the code itself, to me it was very unmaintainable.  So I
+# rewrote in C++ and then I rewrote it in python.  In reality this code is
+# nothing like the original hardlink.c, since I do things quite differently.
+# Even though this code is written in python the performance of the python
+# version is much faster than the hardlink.c code, in my limited testing.  This
+# is mainly due to use of different algorithms.
 #
-# Original hardlink.c code was written by:  Jakub Jelinek <jakub@redhat.com>
+# Original inspirational hardlink.c code was written by:  Jakub Jelinek
+# <jakub@redhat.com>
 #
 # ------------------------------------------------------------------------
-#
-# 2006-08-02  Currently this code tries to be compatible with Python 1.5
-# because one of the systems I use it on has not been upgraded :(  I will be
-# upgrading that system soon and then won't care about Python 1.5 compatibility
-# anymore.
-#
 
 
 # Hash functions
@@ -78,12 +77,12 @@ def eligibleForHardlink(
             # criteria:
             (not isAlreadyHardlinked(st1, st2)) and         # NOT already hard linked
             (st1[stat.ST_SIZE] == st2[stat.ST_SIZE]) and    # size is the same
-            st1[stat.ST_SIZE] != 0 and                      # size is not zero
+            (st1[stat.ST_SIZE] != 0 ) and                   # size is not zero
             (st1[stat.ST_MODE] == st2[stat.ST_MODE]) and    # file mode is the same
             (st1[stat.ST_UID] == st2[stat.ST_UID]) and      # owner user id is the same
             (st1[stat.ST_GID] == st2[stat.ST_GID]) and      # owner group id is the same
-            ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or          # modified time is the same
-              (gOptions.isIgnoretimestamp())) and                   # OR date hashing is off
+            ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
+              (gOptions.isIgnoretimestamp())) and           # OR date hashing is off
             (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
         )
     if None:

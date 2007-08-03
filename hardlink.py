@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-import getopt, os, re, stat, sys, time
-
 # hardlink - Goes through a directory structure and creates hardlinks for
 # files which are identical.
 #
@@ -39,7 +37,22 @@ import getopt, os, re, stat, sys, time
 # <jakub@redhat.com>
 #
 # ------------------------------------------------------------------------
+#
+# TODO:
+#   *   Thinking it might make sense to walk the entire tree first and collect
+#       up all the file information before starting to do comparisons.  Thought
+#       here is we could find all the files which are hardlinked to each other
+#       and then do a comparison.  If they are identical then hardlink
+#       everything at once.
 
+import getopt
+import os
+import re
+import stat
+import sys
+import time
+
+from optparse import OptionParser
 
 # Hash functions
 # Create a hash from a file's size and time values
@@ -49,8 +62,8 @@ def hash_size_time(size, time):
 def hash_size(size):
     return (size) & (MAX_HASHES - 1);
 
-def hash_value(size, time):
-    if gOptions.isIgnoretimestamp():
+def hash_value(size, time, notimestamp):
+    if notimestamp:
         return hash_size(size)
     else:
         return hash_size_time(size,time)
@@ -70,7 +83,8 @@ def isAlreadyHardlinked(
 # hardlinking if this function returns true.
 def eligibleForHardlink(
     st1,        # first file's status
-    st2):       # second file's status
+    st2,        # second file's status
+    options):
 
     result = (
             # Must meet the following
@@ -82,7 +96,7 @@ def eligibleForHardlink(
             (st1[stat.ST_UID] == st2[stat.ST_UID]) and      # owner user id is the same
             (st1[stat.ST_GID] == st2[stat.ST_GID]) and      # owner group id is the same
             ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
-              (gOptions.isIgnoretimestamp())) and           # OR date hashing is off
+              (options.notimestamp)) and                    # OR date hashing is off
             (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
         )
     if None:
@@ -95,12 +109,12 @@ def eligibleForHardlink(
         print "GIDs:", st1[stat.ST_GID], st2[stat.ST_GID]
         print "SIZE:", st1[stat.ST_SIZE], st2[stat.ST_SIZE]
         print "MTIME:", st1[stat.ST_MTIME], st2[stat.ST_MTIME]
-        print "Ignore date:", gOptions.isIgnoretimestamp()
+        print "Ignore date:", options.notimestamp
         print "Device:", st1[stat.ST_DEV], st2[stat.ST_DEV]
     return result
 
 
-def areFileContentsEqual(filename1, filename2):
+def areFileContentsEqual(filename1, filename2, options):
     """Determine if the contents of two files are equal.
     **!! This function assumes that the file sizes of the two files are
     equal."""
@@ -113,9 +127,9 @@ def areFileContentsEqual(filename1, filename2):
         print "Was attempting to open:"
         print "file1: %s" % filename1
         print "file2: %s" % filename2
-        result = None
+        result = False
     else:
-        if gOptions.getVerboselevel() >= 1:
+        if options.verbose >= 1:
             print "Comparing: %s" % filename1
             print "     to  : %s" % filename2
         buffer_size = 1024*1024
@@ -123,27 +137,27 @@ def areFileContentsEqual(filename1, filename2):
             buffer1 = file1.read(buffer_size)
             buffer2 = file2.read(buffer_size)
             if buffer1 != buffer2:
-                result = None
+                result = False
                 break
             if not buffer1:
-                result = 1
+                result = True
                 break
         gStats.didComparison()
     return result
 
 # Determines if two files should be hard linked together.
-def areFilesHardlinkable(file_info_1, file_info_2):
+def areFilesHardlinkable(file_info_1, file_info_2, options):
     filename1 = file_info_1[0]
     stat_info_1 = file_info_1[1]
     filename2 = file_info_2[0]
     stat_info_2 = file_info_2[1]
     # See if the files are eligible for hardlinking
-    if eligibleForHardlink(stat_info_1, stat_info_2):
+    if eligibleForHardlink(stat_info_1, stat_info_2, options):
         # Now see if the contents of the file are the same.  If they are then
         # these two files should be hardlinked.
-        if not gOptions.isEqualfilenames():
+        if not options.samename:
             # By default we don't care if the filenames are equal
-            result = areFileContentsEqual(filename1, filename2)
+            result = areFileContentsEqual(filename1, filename2, options)
         else:
             # Make sure the filenames are the same, if so then compare content
             basename1 = os.path.basename(filename1)
@@ -151,26 +165,26 @@ def areFilesHardlinkable(file_info_1, file_info_2):
             if basename1 == basename2:
                 result = areFileContentsEqual(filename1, filename2)
             else:
-                result = None
+                result = False
     else:
-        result = None
+        result = False
     return result
 
 # Hardlink two files together
-def hardlinkfiles(sourcefile, destfile, stat_info):
+def hardlinkfiles(sourcefile, destfile, stat_info, options):
     # rename the destination file to save it
     temp_name = destfile + ".$$$___cleanit___$$$"
     try:
-        if not gOptions.isDryrun():
+        if not options.dryrun:
             os.rename(destfile, temp_name)
     except OSError, error:
         print "Failed to rename: %s to %s" % (destfile, temp_name)
         print error
-        result = None
+        result = False
     else:
         # Now link the sourcefile to the destination file
         try:
-            if not gOptions.isDryrun():
+            if not options.dryrun:
                 os.link(sourcefile, destfile)
         except:
             print "Failed to hardlink: %s to %s" % (sourcefile, destfile)
@@ -179,24 +193,24 @@ def hardlinkfiles(sourcefile, destfile, stat_info):
                 os.rename(temp_name, destfile)
             except:
                 print "BAD BAD - failed to rename back %s to %s" (temp_name, destfile)
-            result = None
+            result = False
         else:
             # hard link succeeded
             # Delete the renamed version since we don't need it.
-            if not gOptions.isDryrun():
+            if not options.dryrun:
                 os.unlink ( temp_name)
             # update our stats
             gStats.didHardlink(sourcefile, destfile, stat_info)
-            if gOptions.getVerboselevel() >= 1:
-                if gOptions.isDryrun():
+            if options.verbose >= 1:
+                if options.dryrun:
                     print "Did NOT link.  Dry run"
                 size = stat_info[stat.ST_SIZE]
                 print "Linked: %s" % sourcefile
                 print"     to: %s, saved %s" % (destfile, size)
-            result = 1
+            result = True
     return result
 
-def hardlink_identical_files(directories, filename):
+def hardlink_identical_files(directories, filename, options):
     """
     The purpose of this function is to hardlink files together if the files are
     the same.  To be considered the same they must be equal in the following
@@ -218,11 +232,11 @@ def hardlink_identical_files(directories, filename):
      For each file, generate a simple hash based on the size and modified time.
 
      For any other files which share this hash make sure that they are not
-     identical to this file.  If they are identical than hardlink the files.
+     identical to this file.  If they are identical then hardlink the files.
 
      Add the file info to the list of files that have the same hash value."""
 
-    for exclude in gOptions.getExcludes():
+    for exclude in options.excludes:
         if re.search(exclude, filename):
             return
     try:
@@ -243,10 +257,11 @@ def hardlink_identical_files(directories, filename):
     # Is it a regular file?
     elif stat.S_ISREG(stat_info[stat.ST_MODE]):
         # Create the hash for the file.
-        file_hash = hash_value( stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME] )
+        file_hash = hash_value(stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME],
+            options.notimestamp)
         # Bump statistics count of regular files found.
         gStats.foundRegularFile()
-        if gOptions.getVerboselevel() >= 2:
+        if options.verbose >= 2:
             print "File: %s" % filename
         work_file_info = (filename, stat_info)
         if file_hashes.has_key(file_hash):
@@ -263,8 +278,9 @@ def hardlink_identical_files(directories, filename):
                 # yet.  So now lets see if our file should be hardlinked to any
                 # of the other files with the same hash.
                 for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
-                    if areFilesHardlinkable(work_file_info, (temp_filename, temp_stat_info)):
-                        hardlinkfiles(temp_filename, filename, temp_stat_info)
+                    if areFilesHardlinkable(work_file_info, (temp_filename, temp_stat_info),
+                            options):
+                        hardlinkfiles(temp_filename, filename, temp_stat_info, options)
                         break
                 else:
                     # The file should NOT be hardlinked to any of the other
@@ -309,11 +325,11 @@ class cStatistics:
         self.hardlinked_thisrun = self.hardlinked_thisrun + 1
         self.bytes_saved_thisrun = self.bytes_saved_thisrun + filesize
         self.hardlinkstats.append((sourcefile, destfile))
-    def printStats(self):
+    def printStats(self, options):
         print "\n"
         print "Hard linking Statistics:"
         # Print out the stats for the files we hardlinked, if any
-        if self.previouslyhardlinked and gOptions.printPrevious():
+        if self.previouslyhardlinked and options.printprevious:
             keys = self.previouslyhardlinked.keys()
             keys.sort()
             print "Files Previously Hardlinked:"
@@ -327,7 +343,7 @@ class cStatistics:
                                     size * len(file_list))
             print
         if self.hardlinkstats:
-            if gOptions.isDryrun():
+            if options.dryrun:
                 print "Statistics reflect what would have happened if not a dry run"
             print "Files Hardlinked this run:"
             for (source,dest) in self.hardlinkstats:
@@ -357,68 +373,12 @@ def humanize_number( number ):
 
 
 
-class cOptions:
-    def __init__(self):
-        self.notimestamp = None
-        self.samename = None
-        self.printstats = 1
-        self.verbose = 1
-        self.dryrun = None
-        self.zerosize = None
-        self.exclude = []
-        self.printprevious = None
-
-    def parsearguments(self,arg_list):
-        # TODO: Probably should change this to use optparse but I want it to be
-        # compatible with Python 1.5 at the moment, but soon I won't care about
-        # that
-        short_options = 'fnpqtv:x:'
-        long_options = [ 'timestamp-ignore', 'filenames-equal',
-            'dry-run', 'no-stats', 'print-previous', 'verbose=',
-            'version', 'exclude=' ]
-        try:
-            optlist,args = getopt.getopt(arg_list[1:],short_options,long_options)
-        except getopt.GetoptError, error:
-            print "Error in argument parsing: %s" %  error
-            print
-            self.arghelp()
-            sys.exit(1)
-        for opt, value in optlist:
-            if opt == "-f" or opt== "--filename-ignore":
-                self.samename = 1
-            elif opt == "-n" or opt == "--dry-run":
-                self.dryrun = 1
-            elif opt == "-q" or opt == "--no-stats":
-                self.printstats = None
-            elif opt == "-t" or opt == "--timestamp-ignore":
-                self.notimestamp = 1
-            elif opt == "-v" or opt == "--verbose":
-                self.verbose = int(value)
-            elif opt == "--version":
-                self.printversion()
-                sys.exit(0)
-            elif opt == "-x" or opt == "--exclude":
-                self.exclude.append(value)
-            elif opt == "-p" or opt == "--print-previous":
-                self.printprevious = 1
-            else:
-                print "Error: Unknown option: (%s, %s)" % (opt,value)
-                sys.exit(1)
-        if not args:
-            print "Error in argument parsing: No directories specified"
-            print
-            self.arghelp()
-            sys.exit(1)
-        else:
-            for x in range(0, len(args)):
-                args[x] = os.path.abspath(os.path.expanduser(args[x]))
-        return args
-    def printversion(self):
-        print "hardlink.py, Version %s" % VERSION
-        print "Copyright (C) 2003 - 2006 John L. Villalovos."
-        print "email: software@sodarock.com"
-        print "web: http://www.sodarock.com/"
-        print """
+def printversion(self):
+    print "hardlink.py, Version %s" % VERSION
+    print "Copyright (C) 2003 - 2006 John L. Villalovos."
+    print "email: software@sodarock.com"
+    print "web: http://www.sodarock.com/"
+    print """
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
 Foundation; version 2 of the License.
@@ -432,40 +392,49 @@ this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 Place, Suite 330, Boston, MA  02111-1307, USA.
 """
 
-    def arghelp(self):
-        print "Usage: hardlink.py [OPTION]... [DIRECTORY]..."
-        print "Hardlink files together that are the same in the directory tree"
+
+def parseCommandLine():
+    usage = "usage: %prog [options] directory [ directory ... ]"
+    version = "%prog: " + VERSION
+    parser = OptionParser(usage=usage, version=version)
+    parser.add_option("-f", "--filenames-equal", help="Filenames have to be identical",
+        action="store_true", dest="samename", default=False,)
+
+    parser.add_option("-n", "--dry-run", help="Do NOT actually hardlink files",
+        action="store_true", dest="dryrun", default=False,)
+
+    parser.add_option("-p", "--print-previous", help="Print previously created hardlinks",
+        action="store_true", dest="printprevious", default=False,)
+
+    parser.add_option("-q", "--no-stats", help="Do not print the statistics",
+        action="store_false", dest="printstats", default=True,)
+
+    parser.add_option("-t", "--timestamp-ignore",
+        help="File modification times do NOT have to be identical",
+        action="store_true", dest="notimestamp", default=False,)
+
+    parser.add_option("-v", "--verbose",
+        help="Verbosity level (default: %default)", metavar="LEVEL",
+        action="store", dest="verbose", default=1,)
+
+    parser.add_option("-x", "--exclude",
+        help="Regular expression used to exclude files/dirs (may specify multiple times)", metavar="REGEX",
+        action="append", dest="excludes", default=[],)
+
+    (options, args) = parser.parse_args()
+    if not args:
+        parser.print_help()
         print
-        print "Mandatory arguments to long options are mandatory for short options too."
-        print "  -f, --filenames-equal   Filenames have to be identical"
-        print "  -n, --dry-run           Do NOT actually hardlink files"
-        print "  -p, --print-previous    Print previously created hardlinks"
-        print "  -q, --no-stats          Do not print the statistics"
-        print "  -t, --timestamp-ignore  File modification times do NOT have to be identical"
-        print "  -v, --verbose=NUM       Verbosity level (default 1)"
-        print "  -x, --exclude=REGEX     Regular Expression used to exclude files/dirs"
-        print "                          This is treated as a Regular Expression."
-        print "                          ~user/ directory syntax is NOT supported."
-        print "                          Example: ~ftp/pub/ignore/ will NOT work."
-        print "                          Example: '^/var/ftp/pub/ignore/' will work."
-        print ""
-        print "  The -t flag is only recommended if you have a static repository, since"
-        print "  if you are doing an RSYNC the next pass will redownload the files,"
-        print "  since the timestamps are different."
-    def getPrintstats(self):
-        return self.printstats
-    def getVerboselevel(self):
-        return self.verbose
-    def isIgnoretimestamp(self):
-        return self.notimestamp
-    def isEqualfilenames(self):
-        return self.samename
-    def isDryrun(self):
-        return self.dryrun
-    def getExcludes(self):
-        return self.exclude
-    def printPrevious(self):
-        return self.printprevious
+        print "Error: Must supply one or more directories"
+        sys.exit(1)
+    args = [os.path.abspath(os.path.expanduser(dirname)) for dirname in args]
+    for dirname in args:
+        if not os.path.isdir(dirname):
+            parser.print_help()
+            print
+            print "Error: %s is NOT a directory" % dirname
+            sys.exit(1)
+    return options, args
 
 
 # Start of global declarations
@@ -475,15 +444,14 @@ debug1 = None
 MAX_HASHES = 128 * 1024
 
 gStats = cStatistics()
-gOptions  = cOptions()
 
 file_hashes = {}
 
-VERSION = "0.02 - 13-Dec-2005"
+VERSION = "0.03 - 2007-08-03 (03-Aug-2007)"
 
 def main():
     # Parse our argument list and get our list of directories
-    directories = gOptions.parsearguments(sys.argv)
+    options, directories = parseCommandLine()
     # Compile up our regexes ahead of time
     MIRROR_PL_REGEX = re.compile(r'^\.in\.')
     RSYNC_TEMP_REGEX = re.compile((r'^\..*\.\?{6,6}$'))
@@ -521,9 +489,9 @@ def main():
                     continue
                 if debug1 and os.path.isdir(pathname):
                     print "%s is a directory!" % pathname
-                hardlink_identical_files(directories, pathname)
-    if gOptions.getPrintstats():
-        gStats.printStats()
+                hardlink_identical_files(directories, pathname, options)
+    if options.printstats:
+        gStats.printStats(options)
 
 if __name__ == '__main__':
     main()

@@ -447,7 +447,7 @@ gStats = cStatistics()
 
 file_hashes = {}
 
-VERSION = "0.03 - 2007-08-03 (03-Aug-2007)"
+VERSION = "0.04 - 2007-11-14 (14-Nov-2007)"
 
 def main():
     # Parse our argument list and get our list of directories

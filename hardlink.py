@@ -163,7 +163,7 @@ def areFilesHardlinkable(file_info_1, file_info_2, options):
             basename1 = os.path.basename(filename1)
             basename2 = os.path.basename(filename2)
             if basename1 == basename2:
-                result = areFileContentsEqual(filename1, filename2)
+                result = areFileContentsEqual(filename1, filename2, options)
             else:
                 result = False
     else:

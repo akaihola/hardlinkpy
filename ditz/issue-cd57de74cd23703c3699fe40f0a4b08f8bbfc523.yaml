@@ -31,10 +31,10 @@ references: []
 id: cd57de74cd23703c3699fe40f0a4b08f8bbfc523
 log_events: 
 - - 2008-09-22 20:22:43.662464 Z
-  - Antti Kaihola <akaihol+festim@ambitone.com>
+  - Antti Kaihola <akaihol+github@ambitone.com>
   - created
   - ""
 - - 2008-09-22 20:25:29.916174 Z
-  - Antti Kaihola <akaihol+festim@ambitone.com>
+  - Antti Kaihola <akaihol+github@ambitone.com>
   - closed issue with disposition fixed
   - Fixed by specifying -v / --verbose as an integer option.

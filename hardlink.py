@@ -364,11 +364,11 @@ class cStatistics:
 
 def humanize_number( number ):
     if number  > 1024 * 1024 * 1024:
-        return ("%.3f gibibytes" % (number / (1024.0 * 1024 * 1024)))
+        return ("%.3f GiB" % (number / (1024.0 * 1024 * 1024)))
     if number  > 1024 * 1024:
-        return ("%.3f mibibytes" % (number / (1024.0 * 1024)))
+        return ("%.3f MiB" % (number / (1024.0 * 1024)))
     if number  > 1024:
-        return ("%.3f kibibytes" % (number / 1024.0))
+        return ("%.3f KiB" % (number / 1024.0))
     return ("%d bytes" % number)
 
 

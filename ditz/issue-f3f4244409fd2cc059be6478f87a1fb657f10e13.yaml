@@ -1,0 +1,41 @@
+--- !ditz.rubyforge.org,2008-03-06/issue 
+title: If run for current directory, files in the root not linked
+desc: |-
+  Suppose we have this tree and all files have identical content:
+  
+    mydir/
+      file1
+      file2
+      subdir1/
+        file3
+        file4
+      subdir2/
+        file5
+        file6
+  
+  Now run these commands:
+  
+    cd mydir
+    hardlink.py .
+  
+  As a result, files 3-6 are hardlinked, but files 1-2 are not.
+
+  If we re-create the tree, do *not* change the working directory to
+  mydir and run "hardlink.py mydir", all files are linked. The same is
+  true if the current working directory is mydir/subdir1 or
+  mydir/subdir2 and "hardlink.py .." is run.
+type: :bugfix
+component: hardlinkpy
+release: 
+reporter: Antti Kaihola <akaihol+github@ambitone.com>
+status: :unstarted
+disposition: 
+creation_time: 2008-09-30 13:44:32.909968 Z
+references: []
+
+id: f3f4244409fd2cc059be6478f87a1fb657f10e13
+log_events: 
+- - 2008-09-30 13:44:36.751830 Z
+  - Antti Kaihola <akaihol+github@ambitone.com>
+  - created
+  - ""

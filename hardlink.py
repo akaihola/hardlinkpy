@@ -3,7 +3,7 @@
 # hardlink - Goes through a directory structure and creates hardlinks for
 # files which are identical.
 #
-# Copyright (C) 2003 - 2007  John L. Villalovos, Hillsboro, Oregon
+# Copyright (C) 2003 - 2010  John L. Villalovos, Hillsboro, Oregon
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -79,8 +79,8 @@ def isAlreadyHardlinked(
                   );
     return result
 
-# if a file is eligibile for hardlinking.  Files will only be considered for
-# hardlinking if this function returns true.
+# Determine if a file is eligibile for hardlinking.  Files will only be
+# considered for hardlinking if this function returns true.
 def eligibleForHardlink(
     st1,        # first file's status
     st2,        # second file's status
@@ -90,13 +90,24 @@ def eligibleForHardlink(
             # Must meet the following
             # criteria:
             (not isAlreadyHardlinked(st1, st2)) and         # NOT already hard linked
+
             (st1[stat.ST_SIZE] == st2[stat.ST_SIZE]) and    # size is the same
+
             (st1[stat.ST_SIZE] != 0 ) and                   # size is not zero
-            (st1[stat.ST_MODE] == st2[stat.ST_MODE]) and    # file mode is the same
-            (st1[stat.ST_UID] == st2[stat.ST_UID]) and      # owner user id is the same
-            (st1[stat.ST_GID] == st2[stat.ST_GID]) and      # owner group id is the same
+
+            ((st1[stat.ST_MODE] == st2[stat.ST_MODE]) or
+              (options.contentonly)) and                    # file mode is the same
+
+            ((st1[stat.ST_UID] == st2[stat.ST_UID]) or      # owner user id is the same
+              (options.contentonly)) and                    #   OR we are comparing content only
+
+            ((st1[stat.ST_GID] == st2[stat.ST_GID]) or      # owner group id is the same
+              (options.contentonly)) and                    #   OR we are comparing content only
+
             ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
-              (options.notimestamp)) and                    # OR date hashing is off
+              (options.notimestamp) or                      #   OR date hashing is off
+              (options.contentonly)) and                    #   OR we are comparing content only
+
             (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
         )
     if None:
@@ -215,12 +226,12 @@ def hardlink_identical_files(directories, filename, options):
     The purpose of this function is to hardlink files together if the files are
     the same.  To be considered the same they must be equal in the following
     criteria:
-          * file mode
-          * owner user id
-          * owner group id
           * file size
-          * modified time (optional)
           * file contents
+          * file mode (default)
+          * owner user id (default)
+          * owner group id (default)
+          * modified time (default)
 
     Also, files will only be hardlinked if they are on the same device.  This
     is because hardlink does not allow you to hardlink across file systems.
@@ -258,7 +269,7 @@ def hardlink_identical_files(directories, filename, options):
     elif stat.S_ISREG(stat_info[stat.ST_MODE]):
         # Create the hash for the file.
         file_hash = hash_value(stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME],
-            options.notimestamp)
+            options.notimestamp or options.contentonly)
         # Bump statistics count of regular files found.
         gStats.foundRegularFile()
         if options.verbose >= 2:
@@ -413,6 +424,10 @@ def parseCommandLine():
         help="File modification times do NOT have to be identical",
         action="store_true", dest="notimestamp", default=False,)
 
+    parser.add_option("-c", "--content-only",
+        help="Only file contents have to match",
+        action="store_true", dest="contentonly", default=False,)
+
     parser.add_option("-v", "--verbose",
         help="Verbosity level (default: %default)", metavar="LEVEL",
         action="store", dest="verbose", type="int", default=1,)
@@ -447,7 +462,7 @@ gStats = cStatistics()
 
 file_hashes = {}
 
-VERSION = "0.04 - 2007-11-14 (14-Nov-2007)"
+VERSION = "0.05 - 2010-01-07 (07-Jan-2010)"
 
 def main():
     # Parse our argument list and get our list of directories

@@ -45,7 +45,6 @@
 #       and then do a comparison.  If they are identical then hardlink
 #       everything at once.
 
-import getopt
 import os
 import re
 import stat
@@ -374,10 +373,10 @@ class cStatistics:
 
 
 def humanize_number( number ):
-    if number  > 1024 * 1024 * 1024:
-        return ("%.3f GiB" % (number / (1024.0 * 1024 * 1024)))
-    if number  > 1024 * 1024:
-        return ("%.3f MiB" % (number / (1024.0 * 1024)))
+    if number  > 1024 ** 3:
+        return ("%.3f gibibytes" % (number / (1024.0 ** 3)))
+    if number  > 1024 ** 2:
+        return ("%.3f mebibytes" % (number / (1024.0 ** 2)))
     if number  > 1024:
         return ("%.3f KiB" % (number / 1024.0))
     return ("%d bytes" % number)

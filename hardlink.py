@@ -53,62 +53,63 @@ import time
 
 from optparse import OptionParser
 
+
 # Hash functions
 # Create a hash from a file's size and time values
 def hash_size_time(size, time):
-    return (size ^ time) & (MAX_HASHES - 1);
+    return (size ^ time) & (MAX_HASHES - 1)
+
 
 def hash_size(size):
-    return (size) & (MAX_HASHES - 1);
+    return (size) & (MAX_HASHES - 1)
+
 
 def hash_value(size, time, notimestamp):
     if notimestamp:
         return hash_size(size)
     else:
-        return hash_size_time(size,time)
+        return hash_size_time(size, time)
+
 
 # If two files have the same inode and are on the same device then they are
 # already hardlinked.
-def is_already_hardlinked(
-    st1,     # first file's status
-    st2 ):    # second file's status
-    result = (
-                      (st1[stat.ST_INO] == st2[stat.ST_INO]) and # Inodes equal
-                      (st1[stat.ST_DEV] == st2[stat.ST_DEV])     # Devices equal
-                  );
+def is_already_hardlinked(st1,     # first file's status
+                          st2):    # second file's status
+    result = (st1[stat.ST_INO] == st2[stat.ST_INO] and  # Inodes equal
+              st1[stat.ST_DEV] == st2[stat.ST_DEV])     # Devices equal
     return result
+
 
 # Determine if a file is eligibile for hardlinking.  Files will only be
 # considered for hardlinking if this function returns true.
-def eligible_for_hardlink(
-    st1,        # first file's status
-    st2,        # second file's status
-    options):
+def eligible_for_hardlink(st1,        # first file's status
+                          st2,        # second file's status
+                          options):
 
     result = (
-            # Must meet the following
-            # criteria:
-            (not is_already_hardlinked(st1, st2)) and         # NOT already hard linked
+        # Must meet the following
+        # criteria:
+        (not is_already_hardlinked(st1, st2)) and       # NOT already hard linked
 
-            (st1[stat.ST_SIZE] == st2[stat.ST_SIZE]) and    # size is the same
+        (st1[stat.ST_SIZE] == st2[stat.ST_SIZE]) and    # size is the same
 
-            (st1[stat.ST_SIZE] != 0 ) and                   # size is not zero
+        (st1[stat.ST_SIZE] != 0) and                    # size is not zero
 
-            ((st1[stat.ST_MODE] == st2[stat.ST_MODE]) or
-              (options.contentonly)) and                    # file mode is the same
+        ((st1[stat.ST_MODE] == st2[stat.ST_MODE]) or
+         (options.contentonly)) and                     # file mode is the same
 
-            ((st1[stat.ST_UID] == st2[stat.ST_UID]) or      # owner user id is the same
-              (options.contentonly)) and                    #   OR we are comparing content only
+        ((st1[stat.ST_UID] == st2[stat.ST_UID]) or      # owner user id is the same
+         (options.contentonly)) and                     #   OR we are comparing content only
 
-            ((st1[stat.ST_GID] == st2[stat.ST_GID]) or      # owner group id is the same
-              (options.contentonly)) and                    #   OR we are comparing content only
+        ((st1[stat.ST_GID] == st2[stat.ST_GID]) or      # owner group id is the same
+         (options.contentonly)) and                     #   OR we are comparing content only
 
-            ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
-              (options.notimestamp) or                      #   OR date hashing is off
-              (options.contentonly)) and                    #   OR we are comparing content only
+        ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
+         (options.notimestamp) or                       #   OR date hashing is off
+         (options.contentonly)) and                     #   OR we are comparing content only
 
-            (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
-        )
+        (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
+    )
     if None:
     # if not result:
         print "\n***\n", st1
@@ -129,8 +130,8 @@ def are_file_contents_equal(filename1, filename2, options):
     **!! This function assumes that the file sizes of the two files are
     equal."""
     # Open our two files
-    file1 = open(filename1,'rb')
-    file2 = open(filename2,'rb')
+    file1 = open(filename1, 'rb')
+    file2 = open(filename2, 'rb')
     # Make sure open succeeded
     if not (file1 and file2):
         print "Error opening file in are_file_contents_equal"
@@ -154,6 +155,7 @@ def are_file_contents_equal(filename1, filename2, options):
                 break
         gStats.did_comparison()
     return result
+
 
 # Determines if two files should be hard linked together.
 def are_files_hardlinkable(file_info_1, file_info_2, options):
@@ -179,6 +181,7 @@ def are_files_hardlinkable(file_info_1, file_info_2, options):
     else:
         result = False
     return result
+
 
 # Hardlink two files together
 def hardlink_files(sourcefile, destfile, stat_info, options):
@@ -208,7 +211,7 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
             # hard link succeeded
             # Delete the renamed version since we don't need it.
             if not options.dryrun:
-                os.unlink ( temp_name)
+                os.unlink(temp_name)
             # update our stats
             gStats.did_hardlink(sourcefile, destfile, stat_info)
             if options.verbose >= 1:
@@ -219,6 +222,7 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
                 print"     to: %s, saved %s" % (destfile, size)
             result = True
     return result
+
 
 def hardlink_identical_files(directories, filename, options):
     """
@@ -268,28 +272,28 @@ def hardlink_identical_files(directories, filename, options):
     elif stat.S_ISREG(stat_info[stat.ST_MODE]):
         # Create the hash for the file.
         file_hash = hash_value(stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME],
-            options.notimestamp or options.contentonly)
+                               options.notimestamp or options.contentonly)
         # Bump statistics count of regular files found.
         gStats.found_regular_file()
         if options.verbose >= 2:
             print "File: %s" % filename
         work_file_info = (filename, stat_info)
-        if file_hashes.has_key(file_hash):
+        if file_hash in file_hashes:
             # We have file(s) that have the same hash as our current file.
             # Let's go through the list of files with the same hash and see if
             # we are already hardlinked to any of them.
-            for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
-                if is_already_hardlinked(stat_info,temp_stat_info):
-                    gStats.found_hardlink(temp_filename,filename,
-                        temp_stat_info)
+            for (temp_filename, temp_stat_info) in file_hashes[file_hash]:
+                if is_already_hardlinked(stat_info, temp_stat_info):
+                    gStats.found_hardlink(temp_filename, filename,
+                                          temp_stat_info)
                     break
             else:
                 # We did not find this file as hardlinked to any other file
                 # yet.  So now lets see if our file should be hardlinked to any
                 # of the other files with the same hash.
-                for (temp_filename,temp_stat_info) in file_hashes[file_hash]:
+                for (temp_filename, temp_stat_info) in file_hashes[file_hash]:
                     if are_files_hardlinkable(work_file_info, (temp_filename, temp_stat_info),
-                            options):
+                                              options):
                         hardlink_files(temp_filename, filename, temp_stat_info, options)
                         break
                 else:
@@ -309,7 +313,7 @@ class cStatistics:
         self.regularfiles = 0L              # how many regular files we find
         self.comparisons = 0L               # how many file content comparisons
         self.hardlinked_thisrun = 0L        # hardlinks done this run
-        self.hardlinked_previously = 0L;    # hardlinks that are already existing
+        self.hardlinked_previously = 0L     # hardlinks that are already existing
         self.bytes_saved_thisrun = 0L       # bytes saved by hardlinking this run
         self.bytes_saved_previously = 0L    # bytes saved by previous hardlinks
         self.hardlinkstats = []             # list of files hardlinked this run
@@ -318,23 +322,28 @@ class cStatistics:
 
     def found_directory(self):
         self.dircount = self.dircount + 1
+
     def found_regular_file(self):
         self.regularfiles = self.regularfiles + 1
+
     def did_comparison(self):
         self.comparisons = self.comparisons + 1
-    def found_hardlink(self,sourcefile, destfile, stat_info):
+
+    def found_hardlink(self, sourcefile, destfile, stat_info):
         filesize = stat_info[stat.ST_SIZE]
         self.hardlinked_previously = self.hardlinked_previously + 1
         self.bytes_saved_previously = self.bytes_saved_previously + filesize
-        if not self.previouslyhardlinked.has_key(sourcefile):
-            self.previouslyhardlinked[sourcefile] = (stat_info,[destfile])
+        if not sourcefile in self.previouslyhardlinked:
+            self.previouslyhardlinked[sourcefile] = (stat_info, [destfile])
         else:
             self.previouslyhardlinked[sourcefile][1].append(destfile)
-    def did_hardlink(self,sourcefile,destfile,stat_info):
+
+    def did_hardlink(self, sourcefile, destfile, stat_info):
         filesize = stat_info[stat.ST_SIZE]
         self.hardlinked_thisrun = self.hardlinked_thisrun + 1
         self.bytes_saved_thisrun = self.bytes_saved_thisrun + filesize
         self.hardlinkstats.append((sourcefile, destfile))
+
     def print_stats(self, options):
         print "\n"
         print "Hard linking Statistics:"
@@ -350,13 +359,13 @@ class cStatistics:
                 for filename in file_list:
                     print "                   : %s" % filename
                 print "Size per file: %s  Total saved: %s" % (size,
-                                    size * len(file_list))
+                                                              size * len(file_list))
             print
         if self.hardlinkstats:
             if options.dryrun:
                 print "Statistics reflect what would have happened if not a dry run"
             print "Files Hardlinked this run:"
-            for (source,dest) in self.hardlinkstats:
+            for (source, dest) in self.hardlinkstats:
                 print"Hardlinked: %s" % source
                 print"        to: %s" % dest
             print
@@ -366,21 +375,19 @@ class cStatistics:
         print "Hardlinked this run   : %s" % self.hardlinked_thisrun
         print "Total hardlinks       : %s" % (self.hardlinked_previously + self.hardlinked_thisrun)
         print "Bytes saved this run  : %s (%s)" % (self.bytes_saved_thisrun, humanize_number(self.bytes_saved_thisrun))
-        totalbytes = self.bytes_saved_thisrun + self.bytes_saved_previously;
+        totalbytes = self.bytes_saved_thisrun + self.bytes_saved_previously
         print "Total bytes saved     : %s (%s)" % (totalbytes, humanize_number(totalbytes))
         print "Total run time        : %s seconds" % (time.time() - self.starttime)
 
 
-
-def humanize_number( number ):
-    if number  > 1024 ** 3:
+def humanize_number(number):
+    if number > 1024 ** 3:
         return ("%.3f gibibytes" % (number / (1024.0 ** 3)))
-    if number  > 1024 ** 2:
+    if number > 1024 ** 2:
         return ("%.3f mebibytes" % (number / (1024.0 ** 2)))
-    if number  > 1024:
+    if number > 1024:
         return ("%.3f KiB" % (number / 1024.0))
     return ("%d bytes" % number)
-
 
 
 def printversion(self):
@@ -408,32 +415,32 @@ def parse_command_line():
     version = "%prog: " + VERSION
     parser = OptionParser(usage=usage, version=version)
     parser.add_option("-f", "--filenames-equal", help="Filenames have to be identical",
-        action="store_true", dest="samename", default=False,)
+                      action="store_true", dest="samename", default=False,)
 
     parser.add_option("-n", "--dry-run", help="Do NOT actually hardlink files",
-        action="store_true", dest="dryrun", default=False,)
+                      action="store_true", dest="dryrun", default=False,)
 
     parser.add_option("-p", "--print-previous", help="Print previously created hardlinks",
-        action="store_true", dest="printprevious", default=False,)
+                      action="store_true", dest="printprevious", default=False,)
 
     parser.add_option("-q", "--no-stats", help="Do not print the statistics",
-        action="store_false", dest="printstats", default=True,)
+                      action="store_false", dest="printstats", default=True,)
 
     parser.add_option("-t", "--timestamp-ignore",
-        help="File modification times do NOT have to be identical",
-        action="store_true", dest="notimestamp", default=False,)
+                      help="File modification times do NOT have to be identical",
+                      action="store_true", dest="notimestamp", default=False,)
 
     parser.add_option("-c", "--content-only",
-        help="Only file contents have to match",
-        action="store_true", dest="contentonly", default=False,)
+                      help="Only file contents have to match",
+                      action="store_true", dest="contentonly", default=False,)
 
     parser.add_option("-v", "--verbose",
-        help="Verbosity level (default: %default)", metavar="LEVEL",
-        action="store", dest="verbose", type="int", default=1,)
+                      help="Verbosity level (default: %default)", metavar="LEVEL",
+                      action="store", dest="verbose", type="int", default=1,)
 
-    parser.add_option("-x", "--exclude",
-        help="Regular expression used to exclude files/dirs (may specify multiple times)", metavar="REGEX",
-        action="append", dest="excludes", default=[],)
+    parser.add_option("-x", "--exclude", metavar="REGEX",
+                      help="Regular expression used to exclude files/dirs (may specify multiple times)",
+                      action="append", dest="excludes", default=[],)
 
     (options, args) = parser.parse_args()
     if not args:
@@ -463,6 +470,7 @@ file_hashes = {}
 
 VERSION = "0.05 - 2010-01-07 (07-Jan-2010)"
 
+
 def main():
     # Parse our argument list and get our list of directories
     options, directories = parse_command_line()
@@ -487,7 +495,7 @@ def main():
                 print "Error: Unable to do an os.listdir on: %s  Skipping..." % directory
                 continue
             for entry in dir_entries:
-                pathname = os.path.normpath(os.path.join(directory,entry))
+                pathname = os.path.normpath(os.path.join(directory, entry))
                 # Look at files/dirs beginning with "."
                 if entry[0] == ".":
                     # Ignore any mirror.pl files.  These are the files that
@@ -499,7 +507,8 @@ def main():
                     if RSYNC_TEMP_REGEX.match(entry):
                         continue
                 if os.path.islink(pathname):
-                    if debug1: print "%s: is a symbolic link, ignoring" % pathname
+                    if debug1:
+                        print "%s: is a symbolic link, ignoring" % pathname
                     continue
                 if debug1 and os.path.isdir(pathname):
                     print "%s is a directory!" % pathname

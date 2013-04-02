@@ -51,6 +51,7 @@ import stat
 import sys
 import time
 import filecmp
+import fnmatch
 
 from optparse import OptionParser
 
@@ -226,6 +227,9 @@ def hardlink_identical_files(directories, filename, options):
         directories.append(filename)
     # Is it a regular file?
     elif stat.S_ISREG(stat_info.st_mode):
+        if options.match:
+            if not fnmatch.fnmatch(filename, options.match):
+                return
         # Create the hash for the file.
         file_hash = hash_value(stat_info.st_size, stat_info.st_mtime,
                                options.notimestamp or options.contentonly)
@@ -397,6 +401,10 @@ def parse_command_line():
     parser.add_option("-x", "--exclude", metavar="REGEX",
                       help="Regular expression used to exclude files/dirs (may specify multiple times)",
                       action="append", dest="excludes", default=[],)
+
+    parser.add_option("-m", "--match",
+        help="Shell pattern used to match files", metavar="PATTERN",
+        action="store", dest="match", default=None,)
 
     (options, args) = parser.parse_args()
     if not args:

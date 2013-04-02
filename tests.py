@@ -54,7 +54,6 @@ class TestHappy(unittest.TestCase):
 
         self.verify_file_contents()
 
-
     def verify_file_contents(self):
         for filename, contents in self.testfs.items():
             with open(filename, "r") as f:
@@ -64,21 +63,19 @@ class TestHappy(unittest.TestCase):
         # Bug?  Should hardlink to the file with most existing links?
         # self.assertEqual(get_inode("dir1/name1.ext"), get_inode("dir1/link"))
 
-
     def test_hardlink_tree_dryrun(self):
         sys.argv = ["hardlink.py", "-v", "0", "--no-stats", "--dry-run", self.root]
         hardlink.main()
 
         self.verify_file_contents()
 
-        self.assertEqual(os.lstat("dir1/name1.ext").st_nlink, 2) # Existing link
+        self.assertEqual(os.lstat("dir1/name1.ext").st_nlink, 2)  # Existing link
         self.assertEqual(os.lstat("dir1/name2.ext").st_nlink, 1)
         self.assertEqual(os.lstat("dir1/name3.ext").st_nlink, 1)
         self.assertEqual(os.lstat("dir2/name1.ext").st_nlink, 1)
         self.assertEqual(os.lstat("dir3/name1.ext").st_nlink, 1)
         self.assertEqual(os.lstat("dir3/name1.noext").st_nlink, 1)
         self.assertEqual(os.lstat("dir4/name1.ext").st_nlink, 1)
-
 
     def test_hardlink_tree(self):
         sys.argv = ["hardlink.py", "-v", "0", "--no-stats", self.root]
@@ -94,7 +91,6 @@ class TestHappy(unittest.TestCase):
 
         self.assertNotEqual(get_inode("dir1/name1.ext"), get_inode("dir4/name1.ext"))
 
-
     def test_hardlink_tree_filenames_equal(self):
         sys.argv = ["hardlink.py", "-v", "0", "--no-stats", "--filenames-equal", self.root]
         hardlink.main()
@@ -108,7 +104,6 @@ class TestHappy(unittest.TestCase):
         self.assertNotEqual(get_inode("dir1/name3.ext"), get_inode("dir3/name1.ext"))
 
         self.assertNotEqual(get_inode("dir1/name1.ext"), get_inode("dir4/name1.ext"))
-
 
     def test_hardlink_tree_exclude(self):
         sys.argv = ["hardlink.py", "-v", "0", "--no-stats", "--exclude", ".*noext$", self.root]
@@ -124,7 +119,6 @@ class TestHappy(unittest.TestCase):
 
         self.assertNotEqual(get_inode("dir1/name1.ext"), get_inode("dir4/name1.ext"))
 
-
     def test_hardlink_tree_timestamp_ignore(self):
         sys.argv = ["hardlink.py", "-v", "0", "--no-stats", "--timestamp-ignore", self.root]
         hardlink.main()
@@ -138,6 +132,20 @@ class TestHappy(unittest.TestCase):
         self.assertEqual(get_inode("dir1/name3.ext"), get_inode("dir3/name1.ext"))
 
         self.assertEqual(get_inode("dir1/name1.ext"), get_inode("dir4/name1.ext"))
+
+    def test_hardlink_tree_match(self):
+        sys.argv = ["hardlink.py", "-v", "0", "--no-stats", "--match", "*.ext", self.root]
+        hardlink.main()
+
+        self.verify_file_contents()
+
+        self.assertEqual(get_inode("dir1/name1.ext"), get_inode("dir1/name2.ext"))
+        self.assertEqual(get_inode("dir1/name1.ext"), get_inode("dir2/name1.ext"))
+        self.assertNotEqual(get_inode("dir1/name1.ext"), get_inode("dir3/name1.noext"))
+
+        self.assertEqual(get_inode("dir1/name3.ext"), get_inode("dir3/name1.ext"))
+
+        self.assertNotEqual(get_inode("dir1/name1.ext"), get_inode("dir4/name1.ext"))
 
 
 if __name__ == '__main__':

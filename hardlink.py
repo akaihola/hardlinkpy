@@ -50,6 +50,7 @@ import re
 import stat
 import sys
 import time
+import filecmp
 
 from optparse import OptionParser
 
@@ -68,15 +69,15 @@ def hash_value(size, time, notimestamp):
     if notimestamp:
         return hash_size(size)
     else:
-        return hash_size_time(size, time)
+        return hash_size_time(size, int(time))
 
 
 # If two files have the same inode and are on the same device then they are
 # already hardlinked.
 def is_already_hardlinked(st1,     # first file's status
                           st2):    # second file's status
-    result = (st1[stat.ST_INO] == st2[stat.ST_INO] and  # Inodes equal
-              st1[stat.ST_DEV] == st2[stat.ST_DEV])     # Devices equal
+    result = (st1.st_ino == st2.st_ino and  # Inodes equal
+              st1.st_dev == st2.st_dev)     # Devices equal
     return result
 
 
@@ -89,97 +90,59 @@ def eligible_for_hardlink(st1,        # first file's status
     result = (
         # Must meet the following
         # criteria:
-        (not is_already_hardlinked(st1, st2)) and       # NOT already hard linked
+        not is_already_hardlinked(st1, st2) and  # NOT already hard linked
 
-        (st1[stat.ST_SIZE] == st2[stat.ST_SIZE]) and    # size is the same
+        st1.st_size == st2.st_size and           # size is the same
 
-        (st1[stat.ST_SIZE] != 0) and                    # size is not zero
+        st1.st_size != 0 and                     # size is not zero
 
-        ((st1[stat.ST_MODE] == st2[stat.ST_MODE]) or
-         (options.contentonly)) and                     # file mode is the same
+        (st1.st_mode == st2.st_mode or
+         options.contentonly) and                # file mode is the same
 
-        ((st1[stat.ST_UID] == st2[stat.ST_UID]) or      # owner user id is the same
-         (options.contentonly)) and                     #   OR we are comparing content only
+        (st1.st_uid == st2.st_uid or             # owner user id is the same
+         options.contentonly) and                # OR we are comparing content only
 
-        ((st1[stat.ST_GID] == st2[stat.ST_GID]) or      # owner group id is the same
-         (options.contentonly)) and                     #   OR we are comparing content only
+        (st1.st_gid == st2.st_gid or             # owner group id is the same
+         options.contentonly) and                # OR we are comparing content only
 
-        ((st1[stat.ST_MTIME] == st2[stat.ST_MTIME]) or  # modified time is the same
-         (options.notimestamp) or                       #   OR date hashing is off
-         (options.contentonly)) and                     #   OR we are comparing content only
+        (st1.st_mtime == st2.st_mtime or         # modified time is the same
+         options.notimestamp or                  # OR date hashing is off
+         options.contentonly) and                # OR we are comparing content only
 
-        (st1[stat.ST_DEV] == st2[stat.ST_DEV])          # device is the same
+        st1.st_dev == st2.st_dev                 # device is the same
     )
     if None:
     # if not result:
         print "\n***\n", st1
         print st2
         print "Already hardlinked: %s" % (not is_already_hardlinked(st1, st2))
-        print "Modes:", st1[stat.ST_MODE], st2[stat.ST_MODE]
-        print "UIDs:", st1[stat.ST_UID], st2[stat.ST_UID]
-        print "GIDs:", st1[stat.ST_GID], st2[stat.ST_GID]
-        print "SIZE:", st1[stat.ST_SIZE], st2[stat.ST_SIZE]
-        print "MTIME:", st1[stat.ST_MTIME], st2[stat.ST_MTIME]
+        print "Modes:", st1.st_mode, st2.st_mode
+        print "UIDs:", st1.st_uid, st2.st_uid
+        print "GIDs:", st1.st_gid, st2.st_gid
+        print "SIZE:", st1.st_size, st2.st_size
+        print "MTIME:", st1.st_mtime, st2.st_mtime
         print "Ignore date:", options.notimestamp
-        print "Device:", st1[stat.ST_DEV], st2[stat.ST_DEV]
+        print "Device:", st1.st_dev, st2.st_dev
     return result
 
 
 def are_file_contents_equal(filename1, filename2, options):
-    """Determine if the contents of two files are equal.
-    **!! This function assumes that the file sizes of the two files are
-    equal."""
-    # Open our two files
-    file1 = open(filename1, 'rb')
-    file2 = open(filename2, 'rb')
-    # Make sure open succeeded
-    if not (file1 and file2):
-        print "Error opening file in are_file_contents_equal"
-        print "Was attempting to open:"
-        print "file1: %s" % filename1
-        print "file2: %s" % filename2
-        result = False
-    else:
-        if options.verbose >= 1:
-            print "Comparing: %s" % filename1
-            print "     to  : %s" % filename2
-        buffer_size = 1024*1024
-        while 1:
-            buffer1 = file1.read(buffer_size)
-            buffer2 = file2.read(buffer_size)
-            if buffer1 != buffer2:
-                result = False
-                break
-            if not buffer1:
-                result = True
-                break
-        gStats.did_comparison()
-    return result
+    """Determine if the contents of two files are equal"""
+    if options.verbose:
+        print "Comparing: %s" % filename1
+        print "     to  : %s" % filename2
+    gStats.did_comparison()
+    return filecmp.cmp(filename1, filename2, shallow=False)
 
 
 # Determines if two files should be hard linked together.
-def are_files_hardlinkable(file_info_1, file_info_2, options):
-    filename1 = file_info_1[0]
-    stat_info_1 = file_info_1[1]
-    filename2 = file_info_2[0]
-    stat_info_2 = file_info_2[1]
-    # See if the files are eligible for hardlinking
-    if eligible_for_hardlink(stat_info_1, stat_info_2, options):
-        # Now see if the contents of the file are the same.  If they are then
-        # these two files should be hardlinked.
-        if not options.samename:
-            # By default we don't care if the filenames are equal
-            result = are_file_contents_equal(filename1, filename2, options)
-        else:
-            # Make sure the filenames are the same, if so then compare content
-            basename1 = os.path.basename(filename1)
-            basename2 = os.path.basename(filename2)
-            if basename1 == basename2:
-                result = are_file_contents_equal(filename1, filename2, options)
-            else:
-                result = False
-    else:
+def are_files_hardlinkable((filename1, stat1), (filename2, stat2), options):
+    if options.samename and os.path.basename(filename1) != os.path.basename(filename2):
         result = False
+    elif not eligible_for_hardlink(stat1, stat2, options):
+        result = False
+    else:
+        result = are_file_contents_equal(filename1, filename2, options)
     return result
 
 
@@ -190,22 +153,21 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
     try:
         if not options.dryrun:
             os.rename(destfile, temp_name)
-    except OSError, error:
-        print "Failed to rename: %s to %s" % (destfile, temp_name)
-        print error
+    except OSError as error:
+        print "Failed to rename: %s to %s: %s" % (destfile, temp_name, error)
         result = False
     else:
         # Now link the sourcefile to the destination file
         try:
             if not options.dryrun:
                 os.link(sourcefile, destfile)
-        except:
-            print "Failed to hardlink: %s to %s" % (sourcefile, destfile)
+        except Exception as error:
+            print "Failed to hardlink: %s to %s: %s" % (sourcefile, destfile, error)
             # Try to recover
             try:
                 os.rename(temp_name, destfile)
-            except:
-                print "BAD BAD - failed to rename back %s to %s" (temp_name, destfile)
+            except Exception as error:
+                print "BAD BAD - failed to rename back %s to %s: %s" (temp_name, destfile, error)
             result = False
         else:
             # hard link succeeded
@@ -217,9 +179,8 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
             if options.verbose >= 1:
                 if options.dryrun:
                     print "Did NOT link.  Dry run"
-                size = stat_info[stat.ST_SIZE]
                 print "Linked: %s" % sourcefile
-                print"     to: %s, saved %s" % (destfile, size)
+                print"     to: %s, saved %s" % (destfile, stat_info.st_size)
             result = True
     return result
 
@@ -255,23 +216,18 @@ def hardlink_identical_files(directories, filename, options):
             return
     try:
         stat_info = os.stat(filename)
-    except OSError:
-        # Python 1.5.2 doesn't handle 2GB+ files well :(
-        print "Unable to get stat info for: %s" % filename
-        print "If running Python 1.5 this could be because the file is greater than 2 Gibibytes"
-        return
-    if not stat_info:
-        # We didn't get the file status info :(
+    except OSError as error:
+        print "Unable to get stat info for: %s: %s" % (filename, error)
         return
 
     # Is it a directory?
-    if stat.S_ISDIR(stat_info[stat.ST_MODE]):
+    if stat.S_ISDIR(stat_info.st_mode):
         # If it is a directory then add it to the list of directories.
         directories.append(filename)
     # Is it a regular file?
-    elif stat.S_ISREG(stat_info[stat.ST_MODE]):
+    elif stat.S_ISREG(stat_info.st_mode):
         # Create the hash for the file.
-        file_hash = hash_value(stat_info[stat.ST_SIZE], stat_info[stat.ST_MTIME],
+        file_hash = hash_value(stat_info.st_size, stat_info.st_mtime,
                                options.notimestamp or options.contentonly)
         # Bump statistics count of regular files found.
         gStats.found_regular_file()
@@ -307,7 +263,7 @@ def hardlink_identical_files(directories, filename, options):
             file_hashes[file_hash] = [work_file_info]
 
 
-class cStatistics:
+class Statistics:
     def __init__(self):
         self.dircount = 0L                  # how many directories we find
         self.regularfiles = 0L              # how many regular files we find
@@ -330,7 +286,7 @@ class cStatistics:
         self.comparisons = self.comparisons + 1
 
     def found_hardlink(self, sourcefile, destfile, stat_info):
-        filesize = stat_info[stat.ST_SIZE]
+        filesize = stat_info.st_size
         self.hardlinked_previously = self.hardlinked_previously + 1
         self.bytes_saved_previously = self.bytes_saved_previously + filesize
         if not sourcefile in self.previouslyhardlinked:
@@ -339,7 +295,7 @@ class cStatistics:
             self.previouslyhardlinked[sourcefile][1].append(destfile)
 
     def did_hardlink(self, sourcefile, destfile, stat_info):
-        filesize = stat_info[stat.ST_SIZE]
+        filesize = stat_info.st_size
         self.hardlinked_thisrun = self.hardlinked_thisrun + 1
         self.bytes_saved_thisrun = self.bytes_saved_thisrun + filesize
         self.hardlinkstats.append((sourcefile, destfile))
@@ -354,7 +310,7 @@ class cStatistics:
             print "Files Previously Hardlinked:"
             for key in keys:
                 stat_info, file_list = self.previouslyhardlinked[key]
-                size = stat_info[stat.ST_SIZE]
+                size = stat_info.st_size
                 print "Hardlinked together: %s" % key
                 for filename in file_list:
                     print "                   : %s" % filename
@@ -459,19 +415,23 @@ def parse_command_line():
 
 
 # Start of global declarations
-debug = None
 debug1 = None
 
 MAX_HASHES = 128 * 1024
 
-gStats = cStatistics()
+gStats = None
 
-file_hashes = {}
+file_hashes = None
 
 VERSION = "0.05 - 2010-01-07 (07-Jan-2010)"
 
 
 def main():
+    global gStats, file_hashes
+
+    gStats = Statistics()
+    file_hashes = {}
+
     # Parse our argument list and get our list of directories
     options, directories = parse_command_line()
     # Compile up our regexes ahead of time
@@ -482,37 +442,35 @@ def main():
     #       directories list as it finds them.
     while directories:
         # Get the last directory in the list
-        directory = directories[-1] + '/'
-        del directories[-1]
-        if not os.path.isdir(directory):
-            print "%s is NOT a directory!" % directory
-        else:
-            gStats.found_directory()
-            # Loop through all the files in the directory
-            try:
-                dir_entries = os.listdir(directory)
-            except OSError:
-                print "Error: Unable to do an os.listdir on: %s  Skipping..." % directory
-                continue
-            for entry in dir_entries:
-                pathname = os.path.normpath(os.path.join(directory, entry))
-                # Look at files/dirs beginning with "."
-                if entry[0] == ".":
-                    # Ignore any mirror.pl files.  These are the files that
-                    # start with ".in."
-                    if MIRROR_PL_REGEX.match(entry):
-                        continue
-                    # Ignore any RSYNC files.  These are files that have the
-                    # format .FILENAME.??????
-                    if RSYNC_TEMP_REGEX.match(entry):
-                        continue
-                if os.path.islink(pathname):
-                    if debug1:
-                        print "%s: is a symbolic link, ignoring" % pathname
+        directory = directories.pop() + '/'
+        assert os.path.isdir(directory)
+
+        gStats.found_directory()
+        # Loop through all the files in the directory
+        try:
+            dir_entries = os.listdir(directory)
+        except OSError:
+            print "Error: Unable to do an os.listdir on: %s  Skipping..." % directory
+            continue
+        for entry in dir_entries:
+            pathname = os.path.normpath(os.path.join(directory, entry))
+            # Look at files/dirs beginning with "."
+            if entry[0] == ".":
+                # Ignore any mirror.pl files.  These are the files that
+                # start with ".in."
+                if MIRROR_PL_REGEX.match(entry):
                     continue
-                if debug1 and os.path.isdir(pathname):
-                    print "%s is a directory!" % pathname
-                hardlink_identical_files(directories, pathname, options)
+                # Ignore any RSYNC files.  These are files that have the
+                # format .FILENAME.??????
+                if RSYNC_TEMP_REGEX.match(entry):
+                    continue
+            if os.path.islink(pathname):
+                if debug1:
+                    print "%s: is a symbolic link, ignoring" % pathname
+                continue
+            if debug1 and os.path.isdir(pathname):
+                print "%s is a directory!" % pathname
+            hardlink_identical_files(directories, pathname, options)
     if options.printstats:
         gStats.print_stats(options)
 

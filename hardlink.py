@@ -168,7 +168,7 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
             try:
                 os.rename(temp_name, destfile)
             except Exception as error:
-                print "BAD BAD - failed to rename back %s to %s: %s" (temp_name, destfile, error)
+                print "BAD BAD - failed to rename back %s to %s: %s" % (temp_name, destfile, error)
             result = False
         else:
             # hard link succeeded

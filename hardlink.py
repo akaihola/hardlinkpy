@@ -271,13 +271,13 @@ def hardlink_identical_files(directories, filename, options):
 
 class Statistics:
     def __init__(self):
-        self.dircount = 0L                  # how many directories we find
-        self.regularfiles = 0L              # how many regular files we find
-        self.comparisons = 0L               # how many file content comparisons
-        self.hardlinked_thisrun = 0L        # hardlinks done this run
-        self.hardlinked_previously = 0L     # hardlinks that are already existing
-        self.bytes_saved_thisrun = 0L       # bytes saved by hardlinking this run
-        self.bytes_saved_previously = 0L    # bytes saved by previous hardlinks
+        self.dircount = 0                   # how many directories we find
+        self.regularfiles = 0               # how many regular files we find
+        self.comparisons = 0                # how many file content comparisons
+        self.hardlinked_thisrun = 0         # hardlinks done this run
+        self.hardlinked_previously = 0      # hardlinks that are already existing
+        self.bytes_saved_thisrun = 0        # bytes saved by hardlinking this run
+        self.bytes_saved_previously = 0     # bytes saved by previous hardlinks
         self.hardlinkstats = []             # list of files hardlinked this run
         self.starttime = time.time()        # track how long it takes
         self.previouslyhardlinked = {}      # list of files hardlinked previously

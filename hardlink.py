@@ -137,7 +137,9 @@ def are_file_contents_equal(filename1, filename2, options):
 
 
 # Determines if two files should be hard linked together.
-def are_files_hardlinkable((filename1, stat1), (filename2, stat2), options):
+def are_files_hardlinkable(filestat1_pair, filestat2_pair, options):
+    filename1,stat1 = filestat1_pair
+    filename2,stat2 = filestat2_pair
     if options.samename and os.path.basename(filename1) != os.path.basename(filename2):
         result = False
     elif not eligible_for_hardlink(stat1, stat2, options):

@@ -311,8 +311,8 @@ class Statistics:
         print("Hard linking Statistics:")
         # Print out the stats for the files we hardlinked, if any
         if self.previouslyhardlinked and options.printprevious:
-            keys = self.previouslyhardlinked.keys()
-            keys.sort()
+            keys = list(self.previouslyhardlinked.keys())
+            keys.sort()  # Could use sorted() once we only support >= Python 2.4
             print("Files Previously Hardlinked:")
             for key in keys:
                 stat_info, file_list = self.previouslyhardlinked[key]

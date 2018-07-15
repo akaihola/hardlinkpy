@@ -156,7 +156,8 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
     try:
         if not options.dryrun:
             os.rename(destfile, temp_name)
-    except OSError as error:
+    except OSError:
+        error = sys.exc_info()[1]
         print("Failed to rename: %s to %s: %s" % (destfile, temp_name, error))
         result = False
     else:
@@ -164,12 +165,14 @@ def hardlink_files(sourcefile, destfile, stat_info, options):
         try:
             if not options.dryrun:
                 os.link(sourcefile, destfile)
-        except Exception as error:
+        except Exception:
+            error = sys.exc_info()[1]
             print("Failed to hardlink: %s to %s: %s" % (sourcefile, destfile, error))
             # Try to recover
             try:
                 os.rename(temp_name, destfile)
-            except Exception as error:
+            except Exception:
+                error = sys.exc_info()[1]
                 print("BAD BAD - failed to rename back %s to %s: %s" % (temp_name, destfile, error))
             result = False
         else:
@@ -219,7 +222,8 @@ def hardlink_identical_files(directories, filename, options):
             return
     try:
         stat_info = os.stat(filename)
-    except OSError as error:
+    except OSError:
+        error = sys.exc_info()[1]
         print("Unable to get stat info for: %s: %s" % (filename, error))
         return
 

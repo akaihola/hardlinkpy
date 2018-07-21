@@ -114,15 +114,15 @@ def eligible_for_hardlink(st1,        # first file's status
     )
     if None:
     # if not result:
-        print("\n***\n%s" % str(st1))
-        print("%s" % str(st2))
+        print("\n***\n%s" % (st1,))
+        print("%s" % (st2,))
         print("Already hardlinked: %s" % (not is_already_hardlinked(st1, st2)))
         print("Modes: %s %s" % (st1.st_mode, st2.st_mode))
         print("UIDs: %s %s" % (st1.st_uid, st2.st_uid))
         print("GIDs: %s %s" % (st1.st_gid, st2.st_gid))
         print("SIZE: %s %s" % (st1.st_size, st2.st_size))
         print("MTIME: %s %s" % (st1.st_mtime, st2.st_mtime))
-        print("Ignore date: %s" % (options.notimestamp))
+        print("Ignore date: %s" % options.notimestamp)
         print("Device: %s %s" % (st1.st_dev, st2.st_dev))
     return result
 
